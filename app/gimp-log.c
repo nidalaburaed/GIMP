@@ -58,10 +58,14 @@ gimp_log_init (void)
   const gchar *env_log_val = g_getenv ("GIMP_LOG");
 
   if (! env_log_val)
+  {
     env_log_val = g_getenv ("GIMP_DEBUG");
+  }
 
   if (env_log_val)
+  {
     g_setenv ("G_MESSAGES_DEBUG", env_log_val, TRUE);
+  }
 
   if (env_log_val)
     {
@@ -70,15 +74,21 @@ gimp_log_init (void)
        *  is a replacement for "help" in GIMP.
        */
       if (g_ascii_strcasecmp (env_log_val, "list-all") == 0)
+      {
         gimp_log_flags = g_parse_debug_string ("help",
                                                log_keys,
                                                G_N_ELEMENTS (log_keys));
+      }
       else if (g_ascii_strcasecmp (env_log_val, "help") == 0)
+      {
         gimp_log_flags = GIMP_LOG_HELP;
+      }
       else
+      {
         gimp_log_flags = g_parse_debug_string (env_log_val,
                                                log_keys,
                                                G_N_ELEMENTS (log_keys));
+      }
 
       if (gimp_log_flags & GIMP_LOG_INSTANCES)
         {

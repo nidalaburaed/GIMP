@@ -20,6 +20,7 @@
 #define _GNU_SOURCE  /* need the POSIX signal API */
 
 #include <stdlib.h>
+#include <time.h>
 #include <string.h>
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
@@ -92,6 +93,7 @@ static GimpStackTraceMode   stack_trace_mode  = GIMP_STACK_TRACE_QUERY;
 static gchar               *full_prog_name    = NULL;
 static gchar               *backtrace_file    = NULL;
 static gchar               *backup_path       = NULL;
+static GFile               *backup_file       = NULL;
 static guint                log_domain_handler_ids[G_N_ELEMENTS (log_domains)];
 static guint                gegl_handler_id   = 0;
 static guint                global_handler_id = 0;
@@ -151,6 +153,8 @@ errors_init (Gimp               *gimp,
   backup_path = g_build_filename (gimp_directory (), "backups",
                                   "backup-XXX.xcf", NULL);
 
+  backup_file = g_file_new_for_path (backup_path);
+
   for (i = 0; i < G_N_ELEMENTS (log_domains); i++)
     log_domain_handler_ids[i] = g_log_set_handler (log_domains[i],
                                                    G_LOG_LEVEL_WARNING |
@@ -187,6 +191,8 @@ errors_exit (void)
     g_free (full_prog_name);
   if (backup_path)
     g_free (backup_path);
+  if (backup_file)
+    g_object_unref (backup_file);
 }
 
 GList *
@@ -339,7 +345,10 @@ gimp_eek (const gchar *reason,
 
   /* Let's just always output on stdout at least so that there is a
    * trace if the rest fails. */
-  g_printerr ("%s: %s: %s\n", full_prog_name, reason, message);
+  time_t timer = time(NULL);
+  char buffer[30];
+  strftime(buffer, 30, "%Y-%m-%d %H.%M.%S", localtime(&timer));
+  g_printerr ("%s: %s: at %s: %s\n", full_prog_name, reason, buffer, message);
 
 #if ! defined (G_OS_WIN32) || defined (HAVE_EXCHNDL)
 
@@ -474,12 +483,9 @@ gimp_eek (const gchar *reason,
       for (; iter && i < 1000; iter = iter->next)
         {
           GimpImage *image = iter->data;
-          GimpItem  *item;
 
           if (! gimp_image_is_dirty (image))
             continue;
-
-          item = GIMP_ITEM (gimp_image_get_active_drawable (image));
 
           /* This is a trick because we want to avoid any memory
            * allocation when the process is abnormally terminated.
@@ -495,12 +501,13 @@ gimp_eek (const gchar *reason,
                                               gimp_get_user_context (the_errors_gimp),
                                               NULL, NULL,
                                               "gimp-xcf-save",
-                                              GIMP_TYPE_RUN_MODE, GIMP_RUN_NONINTERACTIVE,
-                                              GIMP_TYPE_IMAGE,    image,
-                                              GIMP_TYPE_DRAWABLE, item,
-                                              G_TYPE_STRING,      backup_path,
-                                              G_TYPE_STRING,      backup_path,
+                                              GIMP_TYPE_RUN_MODE,     GIMP_RUN_NONINTERACTIVE,
+                                              GIMP_TYPE_IMAGE,        image,
+                                              G_TYPE_INT,             0,
+                                              GIMP_TYPE_OBJECT_ARRAY, NULL,
+                                              G_TYPE_FILE,            backup_file,
                                               G_TYPE_NONE);
+          g_rename (g_file_peek_path (backup_file), backup_path);
           i++;
         }
     }
