@@ -131,7 +131,7 @@ static const GimpActionEntry file_actions[] =
 static const GimpEnumActionEntry file_save_actions[] =
 {
   { "file-save", GIMP_ICON_DOCUMENT_SAVE,
-    NC_("file-action", "_Save"), "<primary>S",
+    NC_("file-action", "_Save"), "<primary><alt>S",
     NC_("file-action", "Save this image"),
     GIMP_SAVE_MODE_SAVE, FALSE,
     GIMP_HELP_FILE_SAVE },
